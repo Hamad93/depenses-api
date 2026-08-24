@@ -4,7 +4,11 @@ services:
     runtime: node
     plan: free
     buildCommand: npm install && npx prisma generate && npm run build
-    startCommand: npx prisma migrate deploy && npm run start:prod
+    # NB: `prisma migrate deploy` cannot connect to libsql:// URLs (Prisma's
+    # migration engine doesn't recognize the scheme). Apply schema changes to
+    # Turso with `node scripts/apply-migrations-turso.js` (locally, against
+    # the production DATABASE_URL) before deploying.
+    startCommand: npm run start:prod
     envVars:
       - key: DATABASE_URL
         sync: false
