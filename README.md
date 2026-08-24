@@ -1,98 +1,121 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Depenses API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+API NestJS pour la gestion de depenses previsionnelles par mois : revenus, depenses, statistiques et import Excel.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+**Production** : https://depenses-api.onrender.com (doc interactive sur `/api`)
 
-## Description
+## Stack technique
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- [NestJS](https://nestjs.com/) 11 (Express)
+- [Prisma ORM](https://www.prisma.io/) 7, generateur `prisma-client` (CJS)
+- Base SQLite, via driver adapter [`@prisma/adapter-libsql`](https://www.npmjs.com/package/@prisma/adapter-libsql) :
+  - en local, fichier `dev.db` (`file:./dev.db`)
+  - en production, base [Turso](https://turso.tech) distante (compatible libSQL/SQLite, persistante)
+- Validation via `class-validator` / `class-transformer`
+- Documentation Swagger (`@nestjs/swagger`)
+- Import Excel (`xlsx` + `multer`)
 
-## Project setup
+## Modele de donnees
 
-```bash
-$ npm install
+```
+Month (mois)
+ ├─ Income[]        (revenus)
+ ├─ Expense[]        (depenses)
+ └─ WeeklyExpense[]  (depenses hebdomadaires, non exposees cote UI)
 ```
 
-## Compile and run the project
+- Un `Month` peut etre une simulation (`isSimulation`, `baseMonthId` pointant vers le mois d'origine).
+- `Income` et `Expense` ont deux dates distinctes :
+  - `createdAt` : date de creation reelle, **immuable**
+  - `date` : date "metier" de la transaction, **modifiable**, initialisee a aujourd'hui par defaut
+- `total = quantite * montant`, calcule cote serveur (jamais fourni par le client).
+
+## Endpoints
+
+| Methode | Route | Description |
+|---|---|---|
+| GET | `/months?includeSimulations=bool` | Liste des mois |
+| GET | `/months/:id` | Detail d'un mois (avec revenus/depenses/hebdo) |
+| GET | `/months/:id/summary` | Resume financier (totaux, repartition par categorie/localisation) |
+| POST | `/months` | Creer un mois |
+| PATCH | `/months/:id` | Modifier un mois |
+| DELETE | `/months/:id` | Supprimer un mois (cascade sur ses lignes) |
+| POST | `/months/:id/simulate` | Simuler des overrides revenus/depenses sans persister |
+| POST | `/months/:id/clone-simulation` | Dupliquer un mois en simulation persistee |
+| GET | `/months/:monthId/incomes` | Revenus d'un mois |
+| POST | `/months/:monthId/incomes` | Ajouter un revenu |
+| PATCH | `/incomes/:id` | Modifier un revenu |
+| DELETE | `/incomes/:id` | Supprimer un revenu |
+| GET | `/months/:monthId/expenses` | Depenses d'un mois |
+| GET | `/months/:monthId/expenses/summary` | Resume des depenses (par categorie/localisation) |
+| POST | `/months/:monthId/expenses` | Ajouter une depense |
+| PATCH | `/expenses/:id` | Modifier une depense |
+| DELETE | `/expenses/:id` | Supprimer une depense |
+| GET | `/months/:monthId/weekly-expenses` | Depenses hebdomadaires d'un mois |
+| GET | `/months/:monthId/weekly-expenses/summary` | Resume par semaine |
+| POST | `/months/:monthId/weekly-expenses` | Ajouter une ligne hebdo |
+| PATCH | `/weekly-expenses/:id` | Modifier une ligne hebdo |
+| DELETE | `/weekly-expenses/:id` | Supprimer une ligne hebdo |
+| GET | `/stats/compare?months=1,2,3` | Comparaison multi-mois + evolution |
+| POST | `/import` | Import d'un fichier `.xlsx` (multipart, champ `file`) |
+
+Documentation complete et testable : `/api` (Swagger UI), export JSON sur `/api-json`.
+
+## Demarrage local
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+npm install
+cp .env.example .env   # DATABASE_URL="file:./dev.db" suffit en local
+npx prisma migrate dev
+npm run start:dev
 ```
 
-## Run tests
+L'API ecoute sur `http://localhost:3000` par defaut (`PORT` configurable).
+
+## Variables d'environnement
+
+Voir `.env.example`. Resume :
+
+| Variable | Local | Production |
+|---|---|---|
+| `DATABASE_URL` | `file:./dev.db` | `libsql://<db>-<org>.turso.io` |
+| `DATABASE_AUTH_TOKEN` | non requis | token Turso |
+| `FRONTEND_URL` | non requis (localhost:4200 autorise par defaut) | origine du frontend deploye, pour CORS |
+| `PORT` | 3000 (defaut) | injecte automatiquement par Render |
+
+## Migrations Prisma
+
+Les migrations sont creees en local avec la base fichier :
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npx prisma migrate dev --name <nom>
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+⚠️ `prisma migrate deploy` ne fonctionne pas contre une URL `libsql://` (le moteur de migration Prisma ne reconnait pas ce schema). Pour appliquer une migration a la base Turso de production :
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+# .env pointant temporairement vers DATABASE_URL/DATABASE_AUTH_TOKEN de prod
+node scripts/apply-migrations-turso.js
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Ce script rejoue simplement le SQL de `prisma/migrations/*/migration.sql` via `@libsql/client`.
 
-## Resources
+## Deploiement (Render, gratuit)
 
-Check out a few resources that may come in handy when working with NestJS:
+Le repo contient un `render.yaml` (blueprint) :
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+- **Build** : `npm install && npx prisma generate && npm run build`
+- **Start** : `npm run start:prod`
+- **Node** : 22.14 (Prisma 7 exige `>=20.19` / `>=22.12` / `>=24.0`)
+- Variables a renseigner dans le dashboard Render : `DATABASE_URL`, `DATABASE_AUTH_TOKEN`, `FRONTEND_URL`
 
-## Support
+Le tier gratuit de Render met le service en veille apres 15 min d'inactivite (reveil ~30-50s au premier appel).
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## Qualite
 
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+```bash
+npm run lint     # ESLint (+ Prettier)
+npx tsc --noEmit # Verification des types
+npm run test     # Tests unitaires
+npm run test:e2e # Tests end-to-end
+```
