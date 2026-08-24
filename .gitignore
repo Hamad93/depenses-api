@@ -1,0 +1,15 @@
+node_modules
+# Keep environment variables out of version control
+.env
+
+/generated/prisma
+/dist
+
+# Local SQLite database
+*.db
+*.db-journal
+
+# AI tooling / skills (environment-specific, not app source)
+/.agents
+/.claude
+/.windsurf

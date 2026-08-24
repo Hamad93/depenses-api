@@ -1,0 +1,73 @@
+// Prisma schema - Depenses previsionnelles API
+// https://pris.ly/d/prisma-schema
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Month {
+  id           Int      @id @default(autoincrement())
+  label        String   @unique // ex: "Mai 26"
+  year         Int
+  monthNumber  Int // 1-12
+  isSimulation Boolean  @default(false)
+  baseMonthId  Int?
+  baseMonth    Month?   @relation("MonthSimulations", fields: [baseMonthId], references: [id], onDelete: SetNull)
+  simulations  Month[]  @relation("MonthSimulations")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  incomes        Income[]
+  expenses       Expense[]
+  weeklyExpenses WeeklyExpense[]
+}
+
+model Income {
+  id          Int      @id @default(autoincrement())
+  monthId     Int
+  month       Month    @relation(fields: [monthId], references: [id], onDelete: Cascade)
+  libelle     String
+  quantite    Float    @default(1)
+  type        String // fixe | variable
+  montant     Float // montant unitaire
+  total       Float // quantite * montant
+  description String?
+  date        DateTime @default(now()) // date modifiable, distincte de createdAt
+  createdAt   DateTime @default(now()) // date de creation, immuable
+  updatedAt   DateTime @updatedAt
+}
+
+model Expense {
+  id           Int      @id @default(autoincrement())
+  monthId      Int
+  month        Month    @relation(fields: [monthId], references: [id], onDelete: Cascade)
+  libelle      String
+  quantite     Float    @default(1)
+  type         String // fixe | variable
+  montant      Float // montant unitaire
+  total        Float // quantite * montant
+  categorie    String? // Habitation | Transport | Ration | Autre ...
+  localisation String? // CA | DKR | AUTRE
+  description  String?
+  date         DateTime @default(now()) // date modifiable, distincte de createdAt
+  createdAt    DateTime @default(now()) // date de creation, immuable
+  updatedAt    DateTime @updatedAt
+}
+
+model WeeklyExpense {
+  id        Int      @id @default(autoincrement())
+  monthId   Int
+  month     Month    @relation(fields: [monthId], references: [id], onDelete: Cascade)
+  semaine   String // ex: "Du 6 au 12"
+  date      String // ex: "6-Jul"
+  libelle   String
+  montant   Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
