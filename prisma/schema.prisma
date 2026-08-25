@@ -60,6 +60,23 @@ model Expense {
   updatedAt    DateTime @updatedAt
 }
 
+model ExpenseCategory {
+  id        Int              @id @default(autoincrement())
+  label     String           @unique
+  libelles  ExpenseLibelle[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+}
+
+model ExpenseLibelle {
+  id         Int             @id @default(autoincrement())
+  label      String          @unique
+  categoryId Int
+  category   ExpenseCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+}
+
 model WeeklyExpense {
   id        Int      @id @default(autoincrement())
   monthId   Int

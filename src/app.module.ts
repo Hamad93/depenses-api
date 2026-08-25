@@ -8,6 +8,8 @@ import { ExpensesModule } from './expenses/expenses.module';
 import { WeeklyExpensesModule } from './weekly-expenses/weekly-expenses.module';
 import { StatsModule } from './stats/stats.module';
 import { ImportModule } from './import/import.module';
+import { ExpenseCategoriesModule } from './expense-categories/expense-categories.module';
+import { ExpenseLibellesModule } from './expense-libelles/expense-libelles.module';
 
 @Module({
   imports: [
@@ -18,6 +20,8 @@ import { ImportModule } from './import/import.module';
     WeeklyExpensesModule,
     StatsModule,
     ImportModule,
+    ExpenseCategoriesModule,
+    ExpenseLibellesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
